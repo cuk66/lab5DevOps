@@ -1,0 +1,61 @@
+services:
+  db:
+    image: mysql:9.3
+    env_file: ./.env
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  front:
+    image: front
+    build:
+      context: ./react-frontend
+      dockerfile: Dockerfile
+    volumes:
+      - frontend-node-modules:/app/node_modules
+    networks:
+      - app-network
+    depends_on:
+      - back
+      
+  back:
+    image: back
+    build: 
+      context: ./spring-backend
+      dockerfile: Dockerfile
+    env_file: ./.env
+    networks:
+      - app-network
+    depends_on:
+      - db
+    volumes:
+      - maven-repo:/root/.m2 
+
+  nginx:
+    image: nginx
+    ports:
+      - "3000:80"
+    build: 
+      context: ./nginx
+      dockerfile: Dockerfile
+    volumes:
+      - ./nginx/conf.d/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - app-network
+    depends_on:
+      - front
+      - back
+
+volumes:
+  mysql-data:
+  maven-repo:
+  frontend-node-modules:
+
+networks:
+  app-network:
